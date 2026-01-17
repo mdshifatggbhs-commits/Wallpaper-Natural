@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wallpaper Nature | Cloud Upload</title>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-storage-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore-compat.js"></script>
+
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #f4f7f6; margin: 0; text-align: center; }
+        header { background: #1b5e20; color: white; padding: 20px; box-shadow: 0 2px 10px rgba(0,0,0,0.2); }
+        .container { background: white; max-width: 450px; margin: 40px auto; padding: 30px; border-radius: 15px; box-shadow: 0 5px 20px rgba(0,0,0,0.1); }
+        input[type="text"], input[type="file"] { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { width: 100%; padding: 15px; background: #2e7d32; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #1b5e20; }
+        #status { margin-top: 15px; color: #555; font-size: 14px; }
+        #preview { width: 100%; border-radius: 10px; margin-top: 15px; display: none; }
+    </style>
+</head>
+<body>
+
+<header>
+    <h1>Wallpaper Nature</h1>
+</header>
+
+<div class="container">
+    <h2>ক্লাউডে ছবি আপলোড করুন</h2>
+    <input type="text" id="imgName" placeholder="ছবির নাম বা ডেসক্রিপশন লিখুন">
+    <input type="file" id="imgFile" accept="image/*" onchange="showPreview(event)">
+    <img id="preview" alt="Preview">
+    <button id="uploadBtn" onclick="uploadToFirebase()">গুগল ক্লাউডে সেভ করুন</button>
+    <div id="status"></div>
+</div>
+
+<script>
+    // আপনার Firebase Config এখানে বসাতে হবে (নিচে নিয়ম দেওয়া আছে)
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        projectId: "YOUR_PROJECT_ID",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    // Initialize Firebase
+    firebase.initializeApp(firebaseConfig);
+    const storage = firebase.storage();
+    const db = firebase.firestore();
+
+    function showPreview(event) {
+        const preview = document.getElementById('preview');
+        preview.src = URL.createObjectURL(event.target.files[0]);
+        preview.style.display = "block";
+    }
+
+    async function uploadToFirebase() {
+        const name = document.getElementById('imgName').value;
+        const file = document.getElementById('imgFile').files[0];
+        const status = document.getElementById('status');
+        const btn = document.getElementById('uploadBtn');
+
+        if (!name || !file) {
+            alert("দয়া করে নাম এবং ছবি দুটোই দিন!");
+            return;
+        }
+
+        btn.disabled = true;
+        status.innerText = "আপলোড হচ্ছে... অনুগ্রহ করে অপেক্ষা করুন।";
+
+        try {
+            // 1. Storage এ ছবি আপলোড
+            const storageRef = storage.ref('wallpapers/' + file.name);
+            const snapshot = await storageRef.put(file);
+            const downloadURL = await snapshot.ref.getDownloadURL();
+
+            // 2. Firestore এ নাম এবং ছবির লিঙ্ক সেভ
+            await db.collection("nature_wallpapers").add({
+                title: name,
+                imageUrl: downloadURL,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+
+            status.innerText = "অভিনন্দন! আপনার ছবি সফলভাবে সেভ হয়েছে।";
+            alert("সফলভাবে আপলোড হয়েছে!");
+        } catch (error) {
+            console.error(error);
+            status.innerText = "দুঃখিত, কোনো সমস্যা হয়েছে।";
+        } finally {
+            btn.disabled = false;
+        }
+    }
+</script>
+
+</body>
+</html>
